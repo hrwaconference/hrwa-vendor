@@ -540,10 +540,86 @@
 // ─────────────────────────────────────────────────
 const SQUARE_APP_ID      = 'sandbox-sq0idb-1C9ywcz1FDlrWHIsSKmvCw';
 const SQUARE_LOCATION_ID = 'BH1VEJFYCSJPR';
-const PAYMENT_ENDPOINT   = 'http://localhost:3000/process-payment';
+const PAYMENT_ENDPOINT   = 'https://hrwa-vendor-backend-production.up.railway.app/process-payment';
 
 const BADGE_PRICE        = 200;
 const SERVICE_FEE_PCT    = 3.75; // Online service fee percentage (e.g. 3.75 = 3.75%)
+
+// ── Discounts ────────────────────────────────────
+// Discounts apply to the BOOTH PRICE only (not extra badges or service fee).
+// Both discounts stack if applicable.
+const EARLY_BIRD_DEADLINE = '2026-07-31T23:59:59-10:00';  // end of day HST
+const EARLY_BIRD_PCT      = 5;   // 5% off booth price for registrations on/before deadline
+const MEMBER_PCT          = 10;  // 10% off booth price for valid HRWA members
+
+// HRWA member IDs (case-insensitive). 53 entries as of 2026-05-18.
+// Update this list and re-deploy when the member roster changes.
+// Suffix codes: A = Associate (vendor), I = Individual, S = System (utility),
+// IS = Individual + System, CS = Commercial System.
+const MEMBER_IDS = [
+  'HRWA052A',  // Frank J Martin Company
+  'HRWA158A',  // Honua Waterworks
+  'HRWA192A',  // USA Blue Book
+  'HRWA230A',  // Delco Sales
+  'HRWA250A',  // Orenco Systems
+  'HRWA168A',  // Clow Valve Company, iHydrant
+  'HRWA294A',  // Engineered Systems Inc.
+  'HRWA265A',  // Mainline Sales-Hawaii (prev. Pacific Rim)
+  'HRWA304A',  // SIP Industries
+  'HRWA238A',  // HD Fowler Company
+  'HRWA163A',  // Prinsco Water Management Solutions
+  'HRWA139A',  // SubSurface Instruments, Inc.
+  'HRWA179A',  // Tripac
+  'HRWA151A',  // Control Systems West
+  'HRWA247A',  // DIPRA
+  'HRWA223A',  // Hubbell Utility Solutions
+  'HRWA127A',  // Industrial Service and Supply, Inc
+  'HRWA171A',  // Blue + White
+  'HRWA075A',  // Correct Equipment
+  'HRWA292A',  // Steve's Plumbing
+  'HRWA260A',  // Aina 1 Plumbing
+  'HRWA103A',  // PACE Supply Corp.
+  'HRWA185I',  // Joe Norris
+  'HRWA093I',  // Kimber DeVerse
+  'HRWA269I',  // Aaron Bruce
+  'HRWA327I',  // Brittany Laswell
+  'HRWA112I',  // Sheila Uyeoka
+  'HRWA255I',  // Virgil Kapanui
+  'HRWA159I',  // Lee Mainsfield
+  'HRWA117I',  // Daniel Bowles
+  'HRWA085I',  // Allen Elmore
+  'HRWA078I',  // Christine Smith
+  'HRWA181I',  // Troy Evans
+  'HRWA177I',  // Greg Harris
+  'HRWA210I',  // Troy Ching
+  'HRWA0058I',  // Sean Smither
+  'HRWA103I',  // Liu Yang
+  'HRWA260I',  // Thomas Townsend
+  'HRWA123I',  // Thomas Arellano
+  'HRWA345S',  // Hana Water Systems
+  'HRWA156S',  // Hawaii Department of Water Supply
+  'HRWA248S',  // Hawaii Water Service Company
+  'HRWA073S',  // Hawaiian Shores Community Association
+  'HRWA147S',  // Kauai Department of Water Supply
+  'HRWA321S',  // Maui Department of Water Supply
+  'HRWA095S',  // Princeville Utilities Company, Inc
+  'HRWA097S',  // Hoolehua - DHHL
+  'HRWA229S',  // Honolulu Board of Water Supply
+  'HRWA178S',  // Pural Water Specialty Co., Inc.
+  'HRWA350S',  // Molokai Ranch
+  'HRWA348IS',  // Vista Waikoloa
+  'HRWA290IS',  // The Shores at Waikoloa
+  'HRWA276CS',  // Aqua Engineers, Inc.
+];
+
+function isEarlyBird() {
+  return new Date() <= new Date(EARLY_BIRD_DEADLINE);
+}
+function isMember(id) {
+  if (!id) return false;
+  const normalized = id.trim().toUpperCase();
+  return MEMBER_IDS.map(m => m.toUpperCase()).includes(normalized);
+}
 
 let selectedTier       = null;
 let selectedPrice      = 0;
@@ -625,11 +701,20 @@ function validateStep(n) {
 
 // ── Summary ──────────────────────────────────────
 function buildSummary() {
-  const extraQty   = parseInt(document.getElementById('extraBadges').value) || 0;
-  const extraCost  = extraQty * BADGE_PRICE;
-  const subtotal   = selectedPrice + extraCost;
-  const serviceFee = Math.round(subtotal * SERVICE_FEE_PCT) / 100;
-  const grandTotal = subtotal + serviceFee;
+  const extraQty       = parseInt(document.getElementById('extraBadges').value) || 0;
+  const extraCost      = extraQty * BADGE_PRICE;
+  const membershipId   = document.getElementById('membershipId').value.trim();
+
+  // ── Apply discounts to BOOTH PRICE only (not badges or service fee) ──
+  const earlyBird      = isEarlyBird();
+  const member         = isMember(membershipId);
+  const earlyBirdDisc  = earlyBird ? Math.round(selectedPrice * EARLY_BIRD_PCT) / 100 : 0;
+  const memberDisc     = member    ? Math.round(selectedPrice * MEMBER_PCT)     / 100 : 0;
+  const discountedBooth = Math.max(0, selectedPrice - earlyBirdDisc - memberDisc);
+
+  const subtotal       = discountedBooth + extraCost;
+  const serviceFee     = Math.round(subtotal * SERVICE_FEE_PCT) / 100;
+  const grandTotal     = subtotal + serviceFee;
 
   const reqs = ['power','tables','av','water','freight','neighbor','access','prize']
     .filter(r => document.getElementById('req-'+r)?.checked)
@@ -646,6 +731,12 @@ function buildSummary() {
     <div class="summary-row"><span>Email</span><span>${document.getElementById('email').value}</span></div>
     <div class="summary-row"><span>Booth Selection</span><span>${selectedTier}</span></div>
     <div class="summary-row"><span>Booth Fee</span><span>$${selectedPrice.toLocaleString()}.00</span></div>`;
+  if (earlyBirdDisc > 0) {
+    rows += `<div class="summary-row" style="color:#2e7d32"><span>🌅 Early Bird Discount (${EARLY_BIRD_PCT}% off booth)</span><span>−$${earlyBirdDisc.toFixed(2)}</span></div>`;
+  }
+  if (memberDisc > 0) {
+    rows += `<div class="summary-row" style="color:#2e7d32"><span>⭐ HRWA Member Discount (${MEMBER_PCT}% off booth)</span><span>−$${memberDisc.toFixed(2)}</span></div>`;
+  }
   if (extraQty > 0) {
     rows += `<div class="summary-row discount-row"><span>Extra Badges (${extraQty} × $200)</span><span>$${extraCost.toLocaleString()}.00</span></div>`;
   }
@@ -655,7 +746,12 @@ function buildSummary() {
     <div class="summary-row total"><span>Total Due</span><span>$${grandTotal.toFixed(2)}</span></div>`;
 
   document.getElementById('summary-rows').innerHTML = rows;
-  window._totalAmount = grandTotal;
+  // Expose for backend validation
+  window._totalAmount   = grandTotal;
+  window._earlyBirdDisc = earlyBirdDisc;
+  window._memberDisc    = memberDisc;
+  window._isEarlyBird   = earlyBird;
+  window._isMember      = member;
 }
 
 // ── Square Init ──────────────────────────────────
@@ -716,7 +812,11 @@ async function handlePayment() {
           boothPrice:   selectedPrice,
           extraBadges:  extraQty,
           extraBadgeFee: extraQty * BADGE_PRICE,
-          totalPaid:    window._totalAmount,   // includes service fee
+          earlyBirdDiscount: window._earlyBirdDisc || 0,
+          memberDiscount:    window._memberDisc || 0,
+          isEarlyBird:  !!window._isEarlyBird,
+          isMember:     !!window._isMember,
+          totalPaid:    window._totalAmount,   // includes discounts + service fee
           staffNames:   document.getElementById('staffNames').value,
           productDesc:  document.getElementById('productDesc').value,
           notes:        document.getElementById('notes').value,
