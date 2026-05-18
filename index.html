@@ -752,15 +752,10 @@ async function initSquare() {
   if (squareCard) return;
   try {
     payments   = Square.payments(SQUARE_APP_ID, SQUARE_LOCATION_ID);
-    squareCard = await payments.card({
-      style: {
-        '.input-container':            { borderColor: '#d5e0ec', borderRadius: '8px' },
-        '.input-container.is-focused': { borderColor: '#1B5CA6' },
-        'input':                       { color: '#1a2e45', fontFamily: 'Open Sans, sans-serif' },
-        'input::placeholder':          { color: '#6b7f96' },
-        '.message-text':               { color: '#d93025' },
-      }
-    });
+    // Use Square's default card field styling.
+    // Custom styles must follow Square's allowed selectors (e.g. .is-focus,
+    // not .is-focused) and properties (no multi-font fallbacks).
+    squareCard = await payments.card();
     await squareCard.attach('#card-container');
   } catch(e) {
     document.getElementById('card-container').innerHTML =
