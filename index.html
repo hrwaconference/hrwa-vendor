@@ -115,6 +115,10 @@
   .tier-popular { position: absolute; top: -10px; right: 12px; background: var(--green); color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; padding: 3px 10px; border-radius: 3px; }
   .tier-selected-check { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; background: var(--blue); border-radius: 50%; display: none; align-items: center; justify-content: center; color: #fff; font-size: .8rem; }
   .tier-card.selected .tier-selected-check { display: flex; }
+  .tier-card.sold-out { opacity: .5; cursor: not-allowed; pointer-events: none; background: #f2f2f4; }
+  .tier-card.sold-out .tier-price { color: var(--muted); }
+  .tier-card.sold-out .tier-avail { color: var(--error) !important; font-weight: 700; }
+  .tier-sold-out-badge { position: absolute; top: -10px; left: 12px; background: var(--error); color: #fff; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; padding: 3px 10px; border-radius: 3px; }
 
   /* Badge add-on */
   .addon-box { background: #f0f6ff; border: 1.5px solid #bcd5f5; border-radius: 10px; padding: 18px; margin-top: 18px; margin-bottom: 6px; }
@@ -339,7 +343,7 @@
         <div class="tier-name">Standard Booth</div>
         <div class="tier-size">7 × 10 ft — Indoor</div>
         <div class="tier-price">$1,625</div>
-        <div class="tier-avail">23 booths available</div>
+        <div class="tier-avail" id="avail-standard">Loading…</div>
         <ul class="tier-features">
           <li>6' draped table + 2 chairs</li>
           <li>Wastebasket &amp; booth ID sign</li>
@@ -357,7 +361,7 @@
         <div class="tier-name">Premium Booth</div>
         <div class="tier-size">7 × 10 ft — Near Entrance</div>
         <div class="tier-price">$1,875</div>
-        <div class="tier-avail" style="color:var(--error);">Only 7 available!</div>
+        <div class="tier-avail" id="avail-premium">Loading…</div>
         <ul class="tier-features">
           <li>Priority location (entrance/coffee)</li>
           <li>6' draped table + 2 chairs</li>
@@ -375,7 +379,7 @@
         <div class="tier-name">Equipment / Outdoor Demo</div>
         <div class="tier-size">Outdoor Pad — Limited Availability</div>
         <div class="tier-price">$1,725</div>
-        <div class="tier-avail" style="color:var(--error);">Very limited spots!</div>
+        <div class="tier-avail" id="avail-outdoor">Loading…</div>
         <ul class="tier-features">
           <li>Outdoor pad for trucks/trailers</li>
           <li>Live equipment demos permitted</li>
@@ -534,7 +538,8 @@
 // ─────────────────────────────────────────────────
 const SQUARE_APP_ID      = 'sq0idp-GcypXm5_qoA0JBi4pMLvYw';   // PRODUCTION (HRWA Conference Vendor Registration app)
 const SQUARE_LOCATION_ID = 'BH1VEJFYCSJPR';   // PRODUCTION main location
-const PAYMENT_ENDPOINT   = 'https://hrwa-vendor-backend-production.up.railway.app/process-payment';
+const PAYMENT_ENDPOINT      = 'https://hrwa-vendor-backend-production.up.railway.app/process-payment';
+const AVAILABILITY_ENDPOINT = 'https://hrwa-vendor-backend-production.up.railway.app/availability';
 
 const BADGE_PRICE        = 200;
 const SERVICE_FEE_PCT    = 3.75; // Online service fee percentage (e.g. 3.75 = 3.75%)
@@ -630,6 +635,57 @@ document.getElementById('companyDesc').addEventListener('input', function() {
   el.classList.toggle('over', words > 50);
 });
 
+// ── Booth Availability ───────────────────────────
+const TIER_AVAIL_IDS = {
+  'Standard Booth':           'avail-standard',
+  'Premium Booth':            'avail-premium',
+  'Equipment / Outdoor Demo': 'avail-outdoor',
+};
+const TIER_CARD_IDS = {
+  'Standard Booth':           'tier-standard',
+  'Premium Booth':            'tier-premium',
+  'Equipment / Outdoor Demo': 'tier-outdoor',
+};
+
+async function loadAvailability() {
+  try {
+    const res  = await fetch(AVAILABILITY_ENDPOINT);
+    const data = await res.json();
+    if (!data.success) return;
+    for (const [tier, info] of Object.entries(data.availability)) {
+      const availEl = document.getElementById(TIER_AVAIL_IDS[tier]);
+      const cardEl  = document.getElementById(TIER_CARD_IDS[tier]);
+      if (!availEl || !cardEl) continue;
+      if (info.soldOut) {
+        availEl.textContent = 'Sold Out';
+        availEl.style.color = 'var(--error)';
+        cardEl.classList.add('sold-out');
+        if (!cardEl.querySelector('.tier-sold-out-badge')) {
+          const badge = document.createElement('div');
+          badge.className = 'tier-sold-out-badge';
+          badge.textContent = 'Sold Out';
+          cardEl.prepend(badge);
+        }
+        if (selectedTier === tier) {
+          selectedTier = null; selectedPrice = 0;
+          cardEl.classList.remove('selected');
+        }
+      } else {
+        const color = info.remaining <= 3 ? 'var(--error)' : 'var(--amber)';
+        availEl.textContent = info.remaining === 1 ? '1 spot remaining!' : `${info.remaining} remaining`;
+        availEl.style.color = color;
+        cardEl.classList.remove('sold-out');
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load booth availability:', e);
+    Object.values(TIER_AVAIL_IDS).forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.textContent === 'Loading…') el.textContent = '';
+    });
+  }
+}
+
 // ── Tier Selection ───────────────────────────────
 function selectTier(el, name, price, badges) {
   document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
@@ -666,6 +722,7 @@ function showStep(n) {
     if (i + 1 > n)    dot.textContent = String(i+1);
   });
   currentStep = n;
+  if (n === 2) loadAvailability();
   if (n === 4) { buildSummary(); initSquare(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -832,6 +889,9 @@ function showSuccess() {
   document.getElementById('conf-number').textContent = 'Confirmation #HRWA-' + Date.now().toString(36).toUpperCase().slice(-8);
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// Load availability on page load
+loadAvailability();
 
 // ── Clear invalid on input ───────────────────────
 document.querySelectorAll('input, textarea').forEach(el => {
