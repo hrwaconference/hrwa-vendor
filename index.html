@@ -216,7 +216,7 @@
   <div class="conf-theme">"Building Resilient Waters: People, Pipes &amp; Partnerships"</div>
   <div class="conf-meta">
     <span>📅 November 17–19, 2026</span>
-    <span>📍 King Kamehameha's Kona Beach Hotel</span>
+    <span>📍 Courtyard King Kamehameha's Kona Beach Hotel</span>
     <span>🌺 Kailua-Kona, Hawai'i</span>
   </div>
   <div class="reg-banner">Vendor &amp; Exhibitor Registration</div>
@@ -224,7 +224,7 @@
 </header>
 
 <!-- Early bird notice -->
-<div class="early-bird">
+<div class="early-bird" id="early-bird-banner">
   <div class="early-bird-inner">
     <span style="font-size:1.3rem;">⏰</span>
     <div>
@@ -549,70 +549,72 @@ const SERVICE_FEE_PCT    = 3.75; // Online service fee percentage (e.g. 3.75 = 3
 // Both discounts stack if applicable.
 const EARLY_BIRD_DEADLINE = '2026-07-31T23:59:59-10:00';  // end of day HST
 const EARLY_BIRD_PCT      = 5;   // 5% off booth price for registrations on/before deadline
+const LATE_FEE_START      = '2026-09-25T23:59:59-10:00';  // late fee applies AFTER this (HST)
+const LATE_FEE_PCT        = 7;   // 7% late fee added to booth price after LATE_FEE_START
 const MEMBER_PCT          = 10;  // 10% off booth price for valid HRWA members
 
-// HRWA member IDs (case-insensitive). 53 entries as of 2026-05-18.
+// HRWA member IDs (case-insensitive). 50 entries as of 2026-08-12.
 // Update this list and re-deploy when the member roster changes.
 // Suffix codes: A = Associate (vendor), I = Individual, S = System (utility),
-// IS = Individual + System, CS = Commercial System.
+// IS = Individual + System, CS = Commercial System, P = Partner Organization.
 const MEMBER_IDS = [
   'HRWA052A',  // Frank J Martin Company
-  'HRWA158A',  // Honua Waterworks
   'HRWA192A',  // USA Blue Book
-  'HRWA230A',  // Delco Sales
-  'HRWA250A',  // Orenco Systems
+  'HRWA310A',  // Waste Water Innovations
+  'HRWA304A',  // SIP Industries
   'HRWA168A',  // Clow Valve Company, iHydrant
   'HRWA294A',  // Engineered Systems Inc.
   'HRWA265A',  // Mainline Sales-Hawaii (prev. Pacific Rim)
-  'HRWA304A',  // SIP Industries
-  'HRWA238A',  // HD Fowler Company
-  'HRWA163A',  // Prinsco Water Management Solutions
-  'HRWA139A',  // SubSurface Instruments, Inc.
-  'HRWA179A',  // Tripac
-  'HRWA151A',  // Control Systems West
-  'HRWA247A',  // DIPRA
-  'HRWA223A',  // Hubbell Utility Solutions
-  'HRWA127A',  // Industrial Service and Supply, Inc
-  'HRWA171A',  // Blue + White
-  'HRWA075A',  // Correct Equipment
-  'HRWA292A',  // Steve's Plumbing
-  'HRWA260A',  // Aina 1 Plumbing
+  'HRWA243A',  // Baker Manufacturing
   'HRWA103A',  // PACE Supply Corp.
+  'HRWA139A',  // SubSurface Instruments, Inc.
+  'HRWA260A',  // Aina 1 Plumbing
+  'HRWA074A',  // Core and Main
+  'HRWA151A',  // Control Systems West
+  'HRWA223A',  // Hubbell Utility Solutions
+  'HRWA171A',  // Blue + White
+  'HRWA292A',  // Steve's Plumbing
+  'HRWA075A',  // Correct Equipment
+  'HRWA158A',  // Honua Waterworks
+  'HRWA230A',  // Delco Sales
+  'HRWA250A',  // Orenco Systems
+  'HRWA084I',  // Leslyn Suarez-Birano
+  'HRWA088I',  // Jacob Fuchigami
+  'HRWA079I',  // Ryan Fauatea
+  'HRWA280I',  // Kevin Humphrey
+  'HRWA123I',  // Thomas Arellano
+  'HRWA0058I',  // Sean Smither
+  'HRWA260I',  // Thomas Townsend
+  'HRWA210I',  // Troy Ching
+  'HRWA103I',  // Liu Yang
+  'HRWA177I',  // Greg Harris
   'HRWA185I',  // Joe Norris
   'HRWA093I',  // Kimber DeVerse
   'HRWA269I',  // Aaron Bruce
   'HRWA327I',  // Brittany Laswell
   'HRWA112I',  // Sheila Uyeoka
-  'HRWA255I',  // Virgil Kapanui
   'HRWA159I',  // Lee Mainsfield
   'HRWA117I',  // Daniel Bowles
-  'HRWA085I',  // Allen Elmore
-  'HRWA078I',  // Christine Smith
-  'HRWA181I',  // Troy Evans
-  'HRWA177I',  // Greg Harris
-  'HRWA210I',  // Troy Ching
-  'HRWA0058I',  // Sean Smither
-  'HRWA103I',  // Liu Yang
-  'HRWA260I',  // Thomas Townsend
-  'HRWA123I',  // Thomas Arellano
+  'HRWA276CS',  // Aqua Engineers, Inc.
+  'HRWA183P',  // SunCoast Learning Systems
+  'HRWA321S',  // Maui Department of Water Supply
   'HRWA345S',  // Hana Water Systems
   'HRWA156S',  // Hawaii Department of Water Supply
   'HRWA248S',  // Hawaii Water Service Company
   'HRWA073S',  // Hawaiian Shores Community Association
   'HRWA147S',  // Kauai Department of Water Supply
-  'HRWA321S',  // Maui Department of Water Supply
   'HRWA095S',  // Princeville Utilities Company, Inc
-  'HRWA097S',  // Hoolehua - DHHL
+  'HRWA348IS',  // Vista Waikoloa
   'HRWA229S',  // Honolulu Board of Water Supply
   'HRWA178S',  // Pural Water Specialty Co., Inc.
-  'HRWA350S',  // Molokai Ranch
-  'HRWA348IS',  // Vista Waikoloa
   'HRWA290IS',  // The Shores at Waikoloa
-  'HRWA276CS',  // Aqua Engineers, Inc.
 ];
 
 function isEarlyBird() {
   return new Date() <= new Date(EARLY_BIRD_DEADLINE);
+}
+function isLateFee() {
+  return new Date() > new Date(LATE_FEE_START);
 }
 function isMember(id) {
   if (!id) return false;
@@ -762,8 +764,9 @@ function buildSummary() {
   const earlyBirdDisc  = earlyBird ? Math.round(selectedPrice * EARLY_BIRD_PCT) / 100 : 0;
   const memberDisc     = member    ? Math.round(selectedPrice * MEMBER_PCT)     / 100 : 0;
   const discountedBooth = Math.max(0, selectedPrice - earlyBirdDisc - memberDisc);
+  const lateFee        = isLateFee() ? Math.round(selectedPrice * LATE_FEE_PCT) / 100 : 0;
 
-  const subtotal       = discountedBooth + extraCost;
+  const subtotal       = discountedBooth + extraCost + lateFee;
   const serviceFee     = Math.round(subtotal * SERVICE_FEE_PCT) / 100;
   const grandTotal     = subtotal + serviceFee;
 
@@ -788,6 +791,9 @@ function buildSummary() {
   if (memberDisc > 0) {
     rows += `<div class="summary-row" style="color:#2e7d32"><span>⭐ HRWA Member Discount (${MEMBER_PCT}% off booth)</span><span>−$${memberDisc.toFixed(2)}</span></div>`;
   }
+  if (lateFee > 0) {
+    rows += `<div class="summary-row" style="color:#b45309"><span>⏰ Late Registration Fee (${LATE_FEE_PCT}% of booth)</span><span>+$${lateFee.toFixed(2)}</span></div>`;
+  }
   if (extraQty > 0) {
     rows += `<div class="summary-row discount-row"><span>Extra Badges (${extraQty} × $200)</span><span>$${extraCost.toLocaleString()}.00</span></div>`;
   }
@@ -801,6 +807,7 @@ function buildSummary() {
   window._totalAmount   = grandTotal;
   window._earlyBirdDisc = earlyBirdDisc;
   window._memberDisc    = memberDisc;
+  window._lateFee       = lateFee;
   window._isEarlyBird   = earlyBird;
   window._isMember      = member;
 }
@@ -860,6 +867,7 @@ async function handlePayment() {
           extraBadgeFee: extraQty * BADGE_PRICE,
           earlyBirdDiscount: window._earlyBirdDisc || 0,
           memberDiscount:    window._memberDisc || 0,
+          lateFee:           window._lateFee || 0,
           isEarlyBird:  !!window._isEarlyBird,
           isMember:     !!window._isMember,
           totalPaid:    window._totalAmount,   // includes discounts + service fee
@@ -892,6 +900,16 @@ function showSuccess() {
 
 // Load availability on page load
 loadAvailability();
+
+// Hide the Early-Bird promo banner once the discount has expired (after
+// EARLY_BIRD_DEADLINE). The 5% discount already stops applying in the math;
+// this keeps the UI consistent.
+(function hideExpiredEarlyBird() {
+  if (!isEarlyBird()) {
+    const banner = document.getElementById('early-bird-banner');
+    if (banner) banner.style.display = 'none';
+  }
+})();
 
 // ── Clear invalid on input ───────────────────────
 document.querySelectorAll('input, textarea').forEach(el => {
